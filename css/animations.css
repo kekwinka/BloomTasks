@@ -1,0 +1,37 @@
+/* Состояния увядания цветов */
+.flower-item.state-fresh {
+    filter: saturate(1) brightness(1);
+}
+
+.flower-item.state-wilting {
+    filter: saturate(0.6) sepia(0.25);
+    transform: rotate(6deg) translateY(4px);
+}
+
+.flower-item.state-dead {
+    filter: grayscale(0.8) brightness(0.6) sepia(0.5);
+    transform: rotate(16deg) translateY(10px) scale(0.9);
+}
+
+/* Анимация искр при засушивании */
+@keyframes magicSparkles {
+    0% { transform: scale(0.8); opacity: 1; filter: drop-shadow(0 0 5px gold); }
+    50% { transform: scale(1.2) rotate(10deg); filter: drop-shadow(0 0 20px #FFD700); }
+    100% { transform: scale(0); opacity: 0; }
+}
+
+.sparkle-anim {
+    animation: magicSparkles 0.8s ease forwards;
+}
+
+/* Фильтрация: остальные цветы становятся полупрозрачными */
+.cube.filtered-out {
+    opacity: 0.12;
+    pointer-events: none;
+    transform: scale(0.95);
+    transition: all 0.4s ease;
+}
+
+.cube {
+    transition: all 0.4s ease;
+}

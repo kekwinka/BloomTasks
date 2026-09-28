@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BloomTasks</title>
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600;700&family=Lobster+Two:ital,wght@0,700;1,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/cubes.css">
+    <link rel="stylesheet" href="css/animations.css">
+</head>
+<body>
+
+    <!-- Шапка: название по центру, кнопки справа -->
+    <header class="header">
+        <div class="header-left-spacer"></div>
+        <h1 class="logo">BloomTasks</h1>
+        
+        <div class="header-right-controls">
+            <div class="filters">
+                <button class="filter-btn active" data-filter="all">Все цветы</button>
+                <button class="filter-btn" data-filter="active">Активные</button>
+                <button class="filter-btn" data-filter="completed">Увядшие</button>
+            </div>
+            <button class="herbarium-open-btn" id="openHerbarium">Гербарий</button>
+        </div>
+    </header>
+
+    <!-- Основное поле: 9 крупных кубов без соприкосновений -->
+    <main class="greenhouse">
+        <div class="cubes-container" id="cubesContainer">
+            <div class="cube cube-1" data-cube-id="1"><div class="cube-glass"></div><div class="water-level"></div><div class="flower-slot" id="slot-1"></div></div>
+            <div class="cube cube-2" data-cube-id="2"><div class="cube-glass"></div><div class="water-level"></div><div class="flower-slot" id="slot-2"></div></div>
+            <div class="cube cube-3" data-cube-id="3"><div class="cube-glass"></div><div class="water-level"></div><div class="flower-slot" id="slot-3"></div></div>
+            <div class="cube cube-4" data-cube-id="4"><div class="cube-glass"></div><div class="water-level"></div><div class="flower-slot" id="slot-4"></div></div>
+            <div class="cube cube-5" data-cube-id="5"><div class="cube-glass"></div><div class="water-level"></div><div class="flower-slot" id="slot-5"></div></div>
+            <div class="cube cube-6" data-cube-id="6"><div class="cube-glass"></div><div class="water-level"></div><div class="flower-slot" id="slot-6"></div></div>
+            <div class="cube cube-7" data-cube-id="7"><div class="cube-glass"></div><div class="water-level"></div><div class="flower-slot" id="slot-7"></div></div>
+            <div class="cube cube-8" data-cube-id="8"><div class="cube-glass"></div><div class="water-level"></div><div class="flower-slot" id="slot-8"></div></div>
+            <div class="cube cube-9" data-cube-id="9"><div class="cube-glass"></div><div class="water-level"></div><div class="flower-slot" id="slot-9"></div></div>
+        </div>
+    </main>
+
+    <!-- Плавающие кнопки действий -->
+    <div class="fab-container">
+        <button class="fab-btn" id="openAddModal" title="Добавить задачу">+</button>
+        <button class="fab-btn secondary" id="openEditModal" title="Управление задачами">✎</button>
+    </div>
+
+    <!-- Модальные окна -->
+    <div class="modal-overlay" id="addModalOverlay">
+        <div class="modal-panel">
+            <h2>Новый цветок-задача</h2>
+            <div class="flower-selector-label">Выберите сорт цветка:</div>
+            <div class="flower-grid" id="flowerGrid">
+                <div class="flower-option" data-flower="rose"><img src="assets/flowers/rose.svg" alt="Роза"><span>Роза</span></div>
+                <div class="flower-option" data-flower="tulip"><img src="assets/flowers/tulip.svg" alt="Тюльпан"><span>Тюльпан</span></div>
+                <div class="flower-option" data-flower="peony"><img src="assets/flowers/peony.svg" alt="Пион"><span>Пион</span></div>
+                <div class="flower-option" data-flower="lavender"><img src="assets/flowers/lavender.svg" alt="Лаванда"><span>Лаванда</span></div>
+                <div class="flower-option" data-flower="chamomile"><img src="assets/flowers/chamomile.svg" alt="Ромашка"><span>Ромашка</span></div>
+                <div class="flower-option" data-flower="orchid"><img src="assets/flowers/orchid.svg" alt="Орхидея"><span>Орхидея</span></div>
+                <div class="flower-option" data-flower="sunflower"><img src="assets/flowers/sunflower.svg" alt="Подсолнух"><span>Подсолнух</span></div>
+                <div class="flower-option" data-flower="lily"><img src="assets/flowers/lily.svg" alt="Лилия"><span>Лилия</span></div>
+            </div>
+
+            <form id="addTaskForm">
+                <input type="text" id="taskTitle" placeholder="Название задачи..." required>
+                <textarea id="taskDesc" placeholder="Описание задачи..." rows="2"></textarea>
+                <div class="form-group">
+                    <label for="taskDeadline">Дедлайн:</label>
+                    <input type="datetime-local" id="taskDeadline" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" id="closeAddModal">Отмена</button>
+                    <button type="submit" class="btn-submit">Посадить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="editModalOverlay">
+        <div class="modal-panel wide">
+            <h2>Управление задачами</h2>
+            <div class="tasks-management-list" id="tasksManagementList"></div>
+            <div class="modal-actions">
+                <button type="button" class="btn-cancel" id="closeEditModal">Закрыть</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="herbariumModalOverlay">
+        <div class="modal-panel herbarium-book">
+            <button class="close-herbarium" id="closeHerbariumBtn">×</button>
+            <h2>Старинный Гербарий</h2>
+            <p class="herbarium-subtitle">Засушенные цветы выполненных дел</p>
+            <div class="herbarium-grid" id="herbariumGrid"></div>
+        </div>
+    </div>
+
+    <div class="flower-tooltip" id="flowerTooltip">
+        <h3 id="tipTitle">Название</h3>
+        <p id="tipDesc">Описание</p>
+        <div class="tip-meta">
+            <span id="tipDeadline">Дедлайн: 00:00</span>
+            <span id="tipTimer" class="timer-badge">Осталось: 2 дня</span>
+        </div>
+        <button class="btn-harvest" id="harvestBtn">Засушить</button>
+    </div>
+
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>
