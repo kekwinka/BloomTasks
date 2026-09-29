@@ -1,112 +1,191 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BloomTasks</title>
-    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600;700&family=Lobster+Two:ital,wght@0,700;1,700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/main.css">
-    <link rel="stylesheet" href="css/cubes.css">
-    <link rel="stylesheet" href="css/animations.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BloomTasks</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600;700&family=Lobster+Two:ital,wght@0,700;1,700&family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/cubes.css">
+  <link rel="stylesheet" href="css/animations.css">
 </head>
 <body>
+  <div class="ambient" aria-hidden="true">
+    <span class="ambient-glow ambient-glow-a"></span>
+    <span class="ambient-glow ambient-glow-b"></span>
+    <span class="ambient-glow ambient-glow-c"></span>
+  </div>
 
-    <!-- Шапка: название по центру, кнопки справа -->
-    <header class="header">
-        <div class="header-left-spacer"></div>
-        <h1 class="logo">BloomTasks</h1>
-        
-        <div class="header-right-controls">
-            <div class="filters">
-                <button class="filter-btn active" data-filter="all">Все цветы</button>
-                <button class="filter-btn" data-filter="active">Активные</button>
-                <button class="filter-btn" data-filter="completed">Увядшие</button>
-            </div>
-            <button class="herbarium-open-btn" id="openHerbarium">Гербарий</button>
+  <header class="header" id="mainHeader">
+    <div class="header-spacer" aria-hidden="true"></div>
+    <h1 class="logo">BloomTasks</h1>
+    <nav class="header-nav" aria-label="Навигация теплицы">
+      <div class="filters" role="group" aria-label="Фильтры">
+        <button type="button" class="filter-btn active" data-filter="all">Все цветы</button>
+        <button type="button" class="filter-btn" data-filter="active">Активные</button>
+        <button type="button" class="filter-btn" data-filter="wilted">Увядшие</button>
+      </div>
+      <button type="button" class="herbarium-open-btn" id="openHerbarium">Гербарий</button>
+    </nav>
+  </header>
+
+  <main class="view-greenhouse" id="greenhouseView">
+    <section class="greenhouse" aria-label="Теплица">
+      <div class="cubes-container" id="cubesContainer">
+        <article class="cube cube-1 tint-peach" data-cube-id="1">
+          <div class="cube-inner">
+            <div class="cube-shine"></div>
+            <div class="cube-rim"></div>
+            <div class="water-level"></div>
+          </div>
+          <div class="flower-slot" id="slot-1"></div>
+        </article>
+        <article class="cube cube-2 tint-mint" data-cube-id="2">
+          <div class="cube-inner">
+            <div class="cube-shine"></div>
+            <div class="cube-rim"></div>
+            <div class="water-level"></div>
+          </div>
+          <div class="flower-slot" id="slot-2"></div>
+        </article>
+        <article class="cube cube-3 tint-lavender" data-cube-id="3">
+          <div class="cube-inner">
+            <div class="cube-shine"></div>
+            <div class="cube-rim"></div>
+            <div class="water-level"></div>
+          </div>
+          <div class="flower-slot" id="slot-3"></div>
+        </article>
+        <article class="cube cube-4 tint-sky" data-cube-id="4">
+          <div class="cube-inner">
+            <div class="cube-shine"></div>
+            <div class="cube-rim"></div>
+            <div class="water-level"></div>
+          </div>
+          <div class="flower-slot" id="slot-4"></div>
+        </article>
+        <article class="cube cube-5 tint-rose" data-cube-id="5">
+          <div class="cube-inner">
+            <div class="cube-shine"></div>
+            <div class="cube-rim"></div>
+            <div class="water-level"></div>
+          </div>
+          <div class="flower-slot" id="slot-5"></div>
+        </article>
+        <article class="cube cube-6 tint-lemon" data-cube-id="6">
+          <div class="cube-inner">
+            <div class="cube-shine"></div>
+            <div class="cube-rim"></div>
+            <div class="water-level"></div>
+          </div>
+          <div class="flower-slot" id="slot-6"></div>
+        </article>
+        <article class="cube cube-7 tint-lilac" data-cube-id="7">
+          <div class="cube-inner">
+            <div class="cube-shine"></div>
+            <div class="cube-rim"></div>
+            <div class="water-level"></div>
+          </div>
+          <div class="flower-slot" id="slot-7"></div>
+        </article>
+        <article class="cube cube-8 tint-aqua" data-cube-id="8">
+          <div class="cube-inner">
+            <div class="cube-shine"></div>
+            <div class="cube-rim"></div>
+            <div class="water-level"></div>
+          </div>
+          <div class="flower-slot" id="slot-8"></div>
+        </article>
+        <article class="cube cube-9 tint-blush" data-cube-id="9">
+          <div class="cube-inner">
+            <div class="cube-shine"></div>
+            <div class="cube-rim"></div>
+            <div class="water-level"></div>
+          </div>
+          <div class="flower-slot" id="slot-9"></div>
+        </article>
+      </div>
+
+      <aside class="nursery" id="nursery" aria-label="Питомник">
+        <p class="nursery-hint" id="nurseryHint">Перетащите в свободный куб</p>
+        <div class="nursery-flowers" id="nurseryFlowers"></div>
+      </aside>
+    </section>
+  </main>
+
+  <div class="fab-container" id="fabContainer">
+    <button type="button" class="fab-btn" id="openAddModal" title="Посадить цветок" aria-label="Добавить задачу">+</button>
+    <button type="button" class="fab-btn secondary" id="openEditModal" title="Управление задачами" aria-label="Редактировать задачи">✎</button>
+  </div>
+
+  <div class="modal-overlay" id="addModalOverlay" role="dialog" aria-modal="true" aria-labelledby="addModalTitle">
+    <div class="modal-panel">
+      <h2 id="addModalTitle">Новый цветок</h2>
+      <p class="modal-lead">Выберите сорт и посадите задачу</p>
+      <div class="flower-grid" id="flowerGrid" role="listbox" aria-label="Сорта цветов"></div>
+      <button type="button" class="selected-flower-preview" id="selectedFlowerPreview" hidden aria-label="Сменить сорт"></button>
+      <form id="addTaskForm" novalidate>
+        <label class="field">
+          <span>Название задачи</span>
+          <input type="text" id="taskTitle" name="title" placeholder="Например: Написать отчёт" required autocomplete="off">
+        </label>
+        <label class="field">
+          <span>Описание</span>
+          <textarea id="taskDesc" name="description" rows="2" placeholder="Подробности (необязательно)"></textarea>
+        </label>
+        <label class="field">
+          <span>Дедлайн</span>
+          <input type="datetime-local" id="taskDeadline" name="deadline" required>
+        </label>
+        <div class="modal-actions">
+          <button type="button" class="btn-cancel" id="closeAddModal">Отмена</button>
+          <button type="submit" class="btn-submit">Посадить</button>
         </div>
-    </header>
-
-    <!-- Основное поле: 9 крупных кубов без соприкосновений -->
-    <main class="greenhouse">
-        <div class="cubes-container" id="cubesContainer">
-            <div class="cube cube-1" data-cube-id="1"><div class="cube-glass"></div><div class="water-level"></div><div class="flower-slot" id="slot-1"></div></div>
-            <div class="cube cube-2" data-cube-id="2"><div class="cube-glass"></div><div class="water-level"></div><div class="flower-slot" id="slot-2"></div></div>
-            <div class="cube cube-3" data-cube-id="3"><div class="cube-glass"></div><div class="water-level"></div><div class="flower-slot" id="slot-3"></div></div>
-            <div class="cube cube-4" data-cube-id="4"><div class="cube-glass"></div><div class="water-level"></div><div class="flower-slot" id="slot-4"></div></div>
-            <div class="cube cube-5" data-cube-id="5"><div class="cube-glass"></div><div class="water-level"></div><div class="flower-slot" id="slot-5"></div></div>
-            <div class="cube cube-6" data-cube-id="6"><div class="cube-glass"></div><div class="water-level"></div><div class="flower-slot" id="slot-6"></div></div>
-            <div class="cube cube-7" data-cube-id="7"><div class="cube-glass"></div><div class="water-level"></div><div class="flower-slot" id="slot-7"></div></div>
-            <div class="cube cube-8" data-cube-id="8"><div class="cube-glass"></div><div class="water-level"></div><div class="flower-slot" id="slot-8"></div></div>
-            <div class="cube cube-9" data-cube-id="9"><div class="cube-glass"></div><div class="water-level"></div><div class="flower-slot" id="slot-9"></div></div>
-        </div>
-    </main>
-
-    <!-- Плавающие кнопки действий -->
-    <div class="fab-container">
-        <button class="fab-btn" id="openAddModal" title="Добавить задачу">+</button>
-        <button class="fab-btn secondary" id="openEditModal" title="Управление задачами">✎</button>
+      </form>
     </div>
+  </div>
 
-    <!-- Модальные окна -->
-    <div class="modal-overlay" id="addModalOverlay">
-        <div class="modal-panel">
-            <h2>Новый цветок-задача</h2>
-            <div class="flower-selector-label">Выберите сорт цветка:</div>
-            <div class="flower-grid" id="flowerGrid">
-                <div class="flower-option" data-flower="rose"><img src="assets/flowers/rose.svg" alt="Роза"><span>Роза</span></div>
-                <div class="flower-option" data-flower="tulip"><img src="assets/flowers/tulip.svg" alt="Тюльпан"><span>Тюльпан</span></div>
-                <div class="flower-option" data-flower="peony"><img src="assets/flowers/peony.svg" alt="Пион"><span>Пион</span></div>
-                <div class="flower-option" data-flower="lavender"><img src="assets/flowers/lavender.svg" alt="Лаванда"><span>Лаванда</span></div>
-                <div class="flower-option" data-flower="chamomile"><img src="assets/flowers/chamomile.svg" alt="Ромашка"><span>Ромашка</span></div>
-                <div class="flower-option" data-flower="orchid"><img src="assets/flowers/orchid.svg" alt="Орхидея"><span>Орхидея</span></div>
-                <div class="flower-option" data-flower="sunflower"><img src="assets/flowers/sunflower.svg" alt="Подсолнух"><span>Подсолнух</span></div>
-                <div class="flower-option" data-flower="lily"><img src="assets/flowers/lily.svg" alt="Лилия"><span>Лилия</span></div>
-            </div>
-
-            <form id="addTaskForm">
-                <input type="text" id="taskTitle" placeholder="Название задачи..." required>
-                <textarea id="taskDesc" placeholder="Описание задачи..." rows="2"></textarea>
-                <div class="form-group">
-                    <label for="taskDeadline">Дедлайн:</label>
-                    <input type="datetime-local" id="taskDeadline" required>
-                </div>
-                <div class="modal-actions">
-                    <button type="button" class="btn-cancel" id="closeAddModal">Отмена</button>
-                    <button type="submit" class="btn-submit">Посадить</button>
-                </div>
-            </form>
-        </div>
+  <div class="modal-overlay" id="editModalOverlay" role="dialog" aria-modal="true" aria-labelledby="editModalTitle">
+    <div class="modal-panel wide">
+      <h2 id="editModalTitle">Управление задачами</h2>
+      <div class="tasks-management-list" id="tasksManagementList"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" id="closeEditModal">Закрыть</button>
+      </div>
     </div>
+  </div>
 
-    <div class="modal-overlay" id="editModalOverlay">
-        <div class="modal-panel wide">
-            <h2>Управление задачами</h2>
-            <div class="tasks-management-list" id="tasksManagementList"></div>
-            <div class="modal-actions">
-                <button type="button" class="btn-cancel" id="closeEditModal">Закрыть</button>
-            </div>
-        </div>
+  <div class="modal-overlay" id="herbariumModalOverlay" role="dialog" aria-modal="true" aria-labelledby="herbariumTitle">
+    <div class="modal-panel herbarium-book">
+      <button type="button" class="close-herbarium" id="closeHerbariumBtn" aria-label="Закрыть">×</button>
+      <h2 id="herbariumTitle">Старинный Гербарий</h2>
+      <p class="herbarium-subtitle">Засушенные цветы выполненных дел</p>
+      <div class="herbarium-sheet">
+        <div class="herbarium-grid" id="herbariumGrid"></div>
+      </div>
     </div>
+  </div>
 
-    <div class="modal-overlay" id="herbariumModalOverlay">
-        <div class="modal-panel herbarium-book">
-            <button class="close-herbarium" id="closeHerbariumBtn">×</button>
-            <h2>Старинный Гербарий</h2>
-            <p class="herbarium-subtitle">Засушенные цветы выполненных дел</p>
-            <div class="herbarium-grid" id="herbariumGrid"></div>
-        </div>
+  <div class="flower-tooltip" id="flowerTooltip" role="tooltip">
+    <h3 id="tipTitle">Название</h3>
+    <p id="tipDesc">Описание</p>
+    <div class="tip-meta">
+      <span id="tipDeadline">Дедлайн</span>
+      <span id="tipTimer" class="timer-badge">Осталось</span>
     </div>
-
-    <div class="flower-tooltip" id="flowerTooltip">
-        <h3 id="tipTitle">Название</h3>
-        <p id="tipDesc">Описание</p>
-        <div class="tip-meta">
-            <span id="tipDeadline">Дедлайн: 00:00</span>
-            <span id="tipTimer" class="timer-badge">Осталось: 2 дня</span>
-        </div>
-        <button class="btn-harvest" id="harvestBtn">Засушить</button>
+    <div class="tip-actions">
+      <button type="button" class="btn-tip-edit" id="tipEditBtn">Редактировать</button>
+      <button type="button" class="btn-harvest" id="harvestBtn">Засушить</button>
     </div>
+    <p class="tip-hint">Или вынесите цветок из куба в свободное пространство</p>
+  </div>
 
-    <script type="module" src="js/app.js"></script>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <div class="sparkle-layer" id="sparkleLayer" aria-hidden="true"></div>
+  <div class="drag-layer" id="dragLayer" aria-hidden="true"></div>
+
+  <script type="module" src="js/app.js"></script>
 </body>
 </html>

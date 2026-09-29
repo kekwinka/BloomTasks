@@ -1,37 +1,135 @@
-/* Состояния увядания цветов */
-.flower-item.state-fresh {
-    filter: saturate(1) brightness(1);
+/* Стебель всегда прямой — увядает только головка (.bloom-group) */
+.flower-item .bloom-group {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  transition: transform 0.55s ease, filter 0.55s ease;
 }
 
-.flower-item.state-wilting {
-    filter: saturate(0.6) sepia(0.25);
-    transform: rotate(6deg) translateY(4px);
+.flower-item .stem-group {
+  transition: filter 0.55s ease;
 }
 
-.flower-item.state-dead {
-    filter: grayscale(0.8) brightness(0.6) sepia(0.5);
-    transform: rotate(16deg) translateY(10px) scale(0.9);
+.flower-item.state-fresh .bloom-group {
+  transform: none;
+  filter: none;
 }
 
-/* Анимация искр при засушивании */
+.flower-item.state-fresh .stem-group {
+  filter: none;
+}
+
+.flower-item.state-wilting .bloom-group {
+  transform: rotate(22deg) translate(2px, 6px);
+  filter: saturate(0.55) sepia(0.22) brightness(0.92);
+}
+
+.flower-item.state-wilting .stem-group {
+  filter: saturate(0.75) brightness(0.95);
+}
+
+.flower-item.state-dead .bloom-group {
+  transform: rotate(48deg) translate(4px, 14px);
+  filter: saturate(0.25) grayscale(0.55) sepia(0.5) brightness(0.78);
+}
+
+.flower-item.state-dead .stem-group {
+  filter: saturate(0.45) brightness(0.88);
+}
+
+/* Fallback если SVG без групп (img) */
+.flower-item.state-wilting:has(img) {
+  filter: saturate(0.55) sepia(0.22);
+}
+
+.flower-item.state-dead:has(img) {
+  filter: grayscale(0.55) sepia(0.45) brightness(0.8);
+}
+
+.cube.filtered-out,
+.nursery-item.filtered-out {
+  opacity: 0.2;
+  pointer-events: none;
+  transition: opacity 0.45s ease, transform 0.45s ease;
+}
+
+.cube.filtered-out {
+  transform: rotate(var(--cube-rot)) scale(0.96);
+}
+
 @keyframes magicSparkles {
-    0% { transform: scale(0.8); opacity: 1; filter: drop-shadow(0 0 5px gold); }
-    50% { transform: scale(1.2) rotate(10deg); filter: drop-shadow(0 0 20px #FFD700); }
-    100% { transform: scale(0); opacity: 0; }
+  0% {
+    transform: scale(0.9) rotate(0deg);
+    opacity: 1;
+    filter: drop-shadow(0 0 8px #FFE08A);
+  }
+  45% {
+    transform: scale(1.2) rotate(10deg);
+    filter: drop-shadow(0 0 22px #FFD700);
+  }
+  100% {
+    transform: scale(0.2) rotate(20deg);
+    opacity: 0;
+  }
+}
+
+@keyframes dryOut {
+  0% {
+    filter: saturate(1) brightness(1);
+  }
+  100% {
+    filter: sepia(0.75) saturate(0.45) brightness(0.9) contrast(0.9);
+    opacity: 0.35;
+  }
 }
 
 .sparkle-anim {
-    animation: magicSparkles 0.8s ease forwards;
+  animation: magicSparkles 0.85s ease forwards;
 }
 
-/* Фильтрация: остальные цветы становятся полупрозрачными */
-.cube.filtered-out {
-    opacity: 0.12;
-    pointer-events: none;
-    transform: scale(0.95);
-    transition: all 0.4s ease;
+.drying-anim {
+  animation: dryOut 0.9s ease forwards;
 }
 
-.cube {
-    transition: all 0.4s ease;
+.drying-anim .bloom-group {
+  transform: rotate(40deg) translateY(10px);
+}
+
+@keyframes sparkFly {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--dx), var(--dy)) scale(0);
+    opacity: 0;
+  }
+}
+
+.spark-particle {
+  position: fixed;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  pointer-events: none;
+  box-shadow: 0 0 10px currentColor;
+  animation: sparkFly 0.9s ease-out forwards;
+}
+
+.spark-particle.star {
+  width: 10px;
+  height: 10px;
+  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+  border-radius: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sparkle-anim,
+  .drying-anim,
+  .spark-particle,
+  .nursery.visible,
+  .flower-item .bloom-group,
+  .flower-item .stem-group {
+    animation: none !important;
+    transition: none !important;
+  }
 }
