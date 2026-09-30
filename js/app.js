@@ -8,10 +8,11 @@ import {
   deleteTask,
   completeTask,
   getUnplacedTasks,
-  getTaskById,
   isCubeFree,
   areAllCubesOccupied,
 } from './state.js';
+
+import { saveState } from './storage.js';
 
 import {
   FLOWER_TYPES,
@@ -30,25 +31,17 @@ let tooltipAnchorEl = null;
 let tipHideTimer = null;
 let toastTimer = null;
 let tickTimer = null;
-let editDraftFlower = null;
 
 const DRAG_THRESHOLD = 8;
 const TIP_HIDE_MS = 60;
 
-/** @type {Record<string, string>} */
-const svgCache = {};
+const commitState = (nextState) => {
+  if (nextState === state) return state;
+  state = nextState;
+  saveState(state);
+  return state;
+};
 
-/** @type {null | {
- *  taskId: string,
- *  sourceEl: HTMLElement,
- *  ghost: HTMLElement | null,
- *  pointerId: number,
- *  startX: number,
- *  startY: number,
- *  moved: boolean,
- *  fromCube: boolean,
- *  cubeId: number | null,
- * }} */
 let drag = null;
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -56,11 +49,9 @@ const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
 const els = {
   body: document.body,
-  cubesContainer: $('#cubesContainer'),
   nursery: $('#nursery'),
   nurseryFlowers: $('#nurseryFlowers'),
   nurseryHint: $('#nurseryHint'),
-  fabContainer: $('#fabContainer'),
   addOverlay: $('#addModalOverlay'),
   editOverlay: $('#editModalOverlay'),
   herbariumOverlay: $('#herbariumModalOverlay'),
@@ -89,7 +80,9 @@ const escapeHtml = (str) =>
     .replace(/"/g, '&quot;');
 
 const toDatetimeLocal = (iso) => {
-  const d = new Date(iso);
+  const timestamp = new Date(iso).getTime();
+  if (!Number.isFinite(timestamp)) return '';
+  const d = new Date(timestamp);
   const pad = (n) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 };
@@ -104,56 +97,59 @@ const showToast = (message) => {
 const openModal = (overlay) => overlay.classList.add('active');
 const closeModal = (overlay) => overlay.classList.remove('active');
 
-const preloadFlowerSvgs = () =>
-  Promise.all(
-    FLOWER_TYPES.map(async (f) => {
-      try {
-        const res = await fetch(f.src);
-        svgCache[f.id] = await res.text();
-      } catch {
-        svgCache[f.id] = '';
-      }
-    })
-  );
+//Цветы//
+const LARGE_FLOWER_IDS = Object.freeze([
+  'hydrangea',
+  'orchid',
+  'lotus',
+  'lily',
+]);
 
-const uniquifySvgIds = (svgText, uid) =>
-  svgText
-    .replace(/\bid="([^"]+)"/g, `id="${uid}-$1"`)
-    .replace(/url\(#([^)]+)\)/g, `url(#${uid}-$1)`);
+const isLargeFlower = (flowerType) => LARGE_FLOWER_IDS.includes(flowerType);
 
-const flowerMarkup = (flowerType, uid = `f${Math.random().toString(36).slice(2, 9)}`) => {
-  const cached = svgCache[flowerType];
-  if (cached) return uniquifySvgIds(cached, uid);
+const imageModifierClass = (flowerType, baseClass = 'flower-image') =>
+  `${baseClass}${isLargeFlower(flowerType) ? ` ${baseClass}--large` : ''}`;
+
+const flowerMarkup = (flowerType, lifecycleState = 'fresh') => {
   const meta = getFlowerMeta(flowerType);
-  return `<img src="${meta.src}" alt="">`;
+  const src = lifecycleState === 'wilted' ? meta.endSrc : meta.src;
+  return `<img class="${imageModifierClass(flowerType)}" src="${src}" alt="${meta.name}" draggable="false">`;
 };
 
-
-/* ---------- Render ---------- */
-
 const createFlowerElement = (task) => {
-  const wilt = calcWiltingState(task);
+  const lifecycleState = calcWiltingState(task);
   const el = document.createElement('div');
-  el.className = `flower-item state-${wilt}`;
+  el.className = `flower-item flower--${lifecycleState}`;
   el.dataset.taskId = task.id;
   el.setAttribute('role', 'img');
   el.setAttribute('aria-label', task.title);
-  el.innerHTML = flowerMarkup(task.flowerType, task.id.replace(/[^a-zA-Z0-9]/g, ''));
+  el.innerHTML = flowerMarkup(task.flowerType, lifecycleState);
   return el;
 };
 
 const renderFlowerGridInto = (container, selectedId = null) => {
   container.innerHTML = FLOWER_TYPES.map(
     (f) => `
-      <button type="button" class="flower-option ${f.id === selectedId ? 'selected' : ''}" data-flower="${f.id}" role="option" aria-label="${f.name}">
-        <img src="${f.src}" alt="">
+      <button type="button" class="flower-option" data-flower="${f.id}" role="option" aria-selected="${f.id === selectedId}" aria-label="${f.name}">
+        <img class="${imageModifierClass(f.id, 'flower-choice-image')}" src="${f.src}" alt="">
       </button>
     `
   ).join('');
 };
 
-const renderFlowerGrid = () => renderFlowerGridInto(els.flowerGrid);
+const renderFlowerGrid = (selectedId = state.selectedFlower) =>
+  renderFlowerGridInto(els.flowerGrid, selectedId);
 
+const renderSelectedFlowerPreview = (container, flowerId) => {
+  const meta = getFlowerMeta(flowerId);
+  container.innerHTML = `
+    <img class="${imageModifierClass(flowerId, 'selected-flower-image')}" src="${meta.src}" alt="${meta.name}" draggable="false">
+    <span class="selected-flower-change">Изменить сорт</span>
+  `;
+  container.setAttribute('aria-label', `Выбран цветок: ${meta.name}. Нажмите, чтобы изменить сорт`);
+};
+
+//Кубы//
 const renderCubes = () => {
   $$('.cube').forEach((cube) => {
     const cubeId = Number(cube.dataset.cubeId);
@@ -188,12 +184,10 @@ const renderCubes = () => {
 const renderNursery = () => {
   const unplaced = getUnplacedTasks(state);
   els.nurseryFlowers.innerHTML = '';
-
   if (unplaced.length === 0) {
     els.nursery.classList.remove('visible');
     return;
   }
-
   els.nursery.classList.add('visible');
   els.nurseryHint.textContent = areAllCubesOccupied(state)
     ? 'Все кубы заняты'
@@ -209,6 +203,7 @@ const renderNursery = () => {
   });
 };
 
+//Гербарий//
 const renderHerbarium = () => {
   if (state.herbarium.length === 0) {
     els.herbariumGrid.innerHTML = `
@@ -225,14 +220,18 @@ const renderHerbarium = () => {
     return;
   }
 
-  els.herbariumGrid.innerHTML = state.herbarium
-    .map((item) => {
+  els.herbariumGrid.innerHTML = state.herbarium.map((item) => {
       const meta = getFlowerMeta(item.flowerType);
+      const driedSrc = item.flowerEndSrc || meta.endSrc;
+      const description = String(item.description || '').trim();
       return `
         <article class="dried-flower-card">
-          <img src="${meta.src}" alt="">
-          <h3>${escapeHtml(item.title)}</h3>
-          <p class="dried-date">${formatCompletedDate(item.completedAt)}</p>
+          <img class="${imageModifierClass(item.flowerType, 'dried-flower-image')}" src="${driedSrc}" alt="${meta.name}">
+          <div class="dried-flower-info">
+            <h3>${escapeHtml(item.title)}</h3>
+            ${description ? `<p class="dried-description">${escapeHtml(description)}</p>` : ''}
+            <p class="dried-date">${formatCompletedDate(item.completedAt)}</p>
+          </div>
         </article>
       `;
     })
@@ -241,19 +240,16 @@ const renderHerbarium = () => {
 
 const renderManagementList = () => {
   const active = state.tasks.filter((t) => t.status === 'active');
-  editDraftFlower = null;
-
   if (active.length === 0) {
-    els.tasksList.innerHTML = '<p class="empty-list">Нет активных задач</p>';
+    els.tasksList.innerHTML = '<p class="empty-list">Нет активных задач, посадите свой первый цветок</p>';
     return;
   }
 
-  els.tasksList.innerHTML = active
-    .map((task) => {
+  els.tasksList.innerHTML = active.map((task) => {
       const meta = getFlowerMeta(task.flowerType);
       return `
         <div class="task-row" data-id="${task.id}">
-          <img src="${meta.src}" alt="" class="task-row-img">
+          <img src="${meta.src}" alt="" class="task-row-img ${isLargeFlower(task.flowerType) ? 'task-row-img--large' : ''}">
           <div class="task-row-info">
             <strong>${escapeHtml(task.title)}</strong>
             <span>${formatDeadline(task.deadline)} · ${wiltLabel(task)}</span>
@@ -275,30 +271,38 @@ const renderAll = () => {
   updateTooltipTimer();
 };
 
-/* ---------- Add form ---------- */
+//Выбор цветка//
+const clearSelectedFlowerPreview = (previewEl) => {
+  previewEl.classList.remove('visible');
+  previewEl.hidden = true;
+  previewEl.innerHTML = '';
+};
+
+const showSelectedFlower = (flowerId, gridEl, previewEl) => {
+  gridEl.classList.add('hidden');
+  renderSelectedFlowerPreview(previewEl, flowerId);
+  previewEl.hidden = false;
+  previewEl.classList.add('visible');
+};
+
+const showFlowerGrid = (gridEl, previewEl, selectedId) => {
+  state = setSelectedFlower(state, selectedId);
+  gridEl.classList.remove('hidden');
+  renderFlowerGridInto(gridEl, selectedId);
+  clearSelectedFlowerPreview(previewEl);
+};
 
 const resetAddForm = () => {
   els.addForm.reset();
   state = setSelectedFlower(state, null);
-  els.flowerGrid.classList.remove('hidden');
-  els.selectedPreview.classList.remove('visible');
-  els.selectedPreview.hidden = true;
-  els.selectedPreview.innerHTML = '';
+  showFlowerGrid(els.flowerGrid, els.selectedPreview, null);
   $$('.field input, .field textarea', els.addForm).forEach((el) =>
     el.classList.remove('invalid')
   );
 };
 
-const showSelectedFlower = (flowerId, previewEl = els.selectedPreview, gridEl = els.flowerGrid) => {
-  const meta = getFlowerMeta(flowerId);
-  gridEl.classList.add('hidden');
-  previewEl.hidden = false;
-  previewEl.classList.add('visible');
-  previewEl.innerHTML = `<img src="${meta.src}" alt="${meta.name}">`;
-};
 
-/* ---------- Tooltip ---------- */
-
+//Подсказка при наведении на цветок//
 const cancelTipHide = () => {
   clearTimeout(tipHideTimer);
   tipHideTimer = null;
@@ -347,7 +351,7 @@ const showTooltip = (task, anchorEl) => {
   els.tipDesc.textContent = task.description || 'Без описания';
   els.tipDeadline.textContent = `Дедлайн: ${formatDeadline(task.deadline)}`;
   els.tipTimer.textContent = `Осталось: ${formatTimeLeft(task.deadline)}`;
-  els.tipTimer.classList.toggle('overdue', calcWiltingState(task) === 'dead');
+  els.tipTimer.classList.toggle('overdue', calcWiltingState(task) === 'wilted');
   positionTooltip(anchorEl.getBoundingClientRect());
   els.tooltip.classList.add('visible');
 };
@@ -367,11 +371,11 @@ const updateTooltipTimer = () => {
     return;
   }
   els.tipTimer.textContent = `Осталось: ${formatTimeLeft(task.deadline)}`;
-  els.tipTimer.classList.toggle('overdue', calcWiltingState(task) === 'dead');
+  els.tipTimer.classList.toggle('overdue', calcWiltingState(task) === 'wilted');
 };
 
-/* ---------- Completion ---------- */
 
+//Анимация при удалении//
 const spawnSparkles = (x, y) => {
   const colors = ['#FFD700', '#FFF4B0', '#E8C87A', '#FFFFFF', '#C9E4A8', '#E8B4C4'];
   Array.from({ length: 16 }).forEach((_, i) => {
@@ -390,49 +394,62 @@ const spawnSparkles = (x, y) => {
   });
 };
 
-const animateHarvest = (originEl, taskId, onDone) => {
+const animateHarvest = (originEl, taskId) => {
   const rect = originEl.getBoundingClientRect();
   const cx = rect.left + rect.width / 2;
   const cy = rect.top + rect.height / 2;
-
   originEl.classList.add('sparkle-anim');
   spawnSparkles(cx, cy);
-
   setTimeout(() => {
     originEl.classList.remove('sparkle-anim');
     originEl.classList.add('drying-anim');
-    setTimeout(() => {
-      state = completeTask(state, taskId);
-      onDone?.();
+    let finished = false;
+    let fallbackTimer = null;
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      if (fallbackTimer !== null) clearTimeout(fallbackTimer);
+      originEl.removeEventListener('animationend', finish);
+      commitState(completeTask(state, taskId));
+      originEl.remove();
       renderAll();
       showToast('Цветок засушен и отправлен в гербарий');
-    }, 500);
+    };
+    originEl.addEventListener('animationend', finish, { once: true });
+    fallbackTimer = setTimeout(finish, 1100);
   }, 700);
 };
 
-/* ---------- Edit ---------- */
+const moveFlowerToHarvestLayer = (flowerEl, x, y) => {
+  const rect = flowerEl.getBoundingClientRect();
+  flowerEl.remove();
+  flowerEl.classList.remove('flower-item', 'is-ghost-source');
+  flowerEl.classList.add('flower-ghost');
+  flowerEl.style.left = `${x ?? rect.left + rect.width / 2}px`;
+  flowerEl.style.top = `${y ?? rect.top + rect.height / 2}px`;
+  els.dragLayer.appendChild(flowerEl);
+  return flowerEl;
+};
 
+
+//Редактирование задач//
 const openInlineEditor = (taskId) => {
   const task = state.tasks.find((t) => t.id === taskId);
   if (!task) return;
-
-  editDraftFlower = task.flowerType;
   openModal(els.editOverlay);
   renderManagementList();
-  editDraftFlower = task.flowerType;
-
+  const rows = $$('.task-row', els.tasksList);
+  rows.forEach((taskRow) => {
+    taskRow.hidden = taskRow.dataset.id !== taskId;
+  });
   const row = els.tasksList.querySelector(`[data-id="${taskId}"]`);
   if (!row) return;
-
-  const meta = getFlowerMeta(task.flowerType);
-
+  els.tasksList.classList.add('editing');
   row.innerHTML = `
     <form class="inline-edit-form" data-id="${taskId}">
       <div class="edit-flower-picker">
         <div class="flower-grid edit-flower-grid hidden" id="editFlowerGrid"></div>
-        <button type="button" class="selected-flower-preview visible" id="editFlowerPreview" aria-label="Сменить сорт">
-          <img src="${meta.src}" alt="${meta.name}">
-        </button>
+        <button type="button" class="selected-flower-preview edit-selected-flower-preview visible" id="editSelectedFlowerPreview" aria-label="Сменить сорт"></button>
       </div>
       <input type="hidden" name="flowerType" id="editFlowerType" value="${task.flowerType}">
       <input type="text" name="title" value="${escapeHtml(task.title)}" required>
@@ -446,32 +463,25 @@ const openInlineEditor = (taskId) => {
   `;
 
   const grid = $('#editFlowerGrid', row);
-  const preview = $('#editFlowerPreview', row);
   const hidden = $('#editFlowerType', row);
-  renderFlowerGridInto(grid, task.flowerType);
-
-  preview.addEventListener('click', () => {
-    preview.classList.remove('visible');
-    preview.hidden = true;
-    grid.classList.remove('hidden');
-  });
+  const preview = $('#editSelectedFlowerPreview', row);
+  renderSelectedFlowerPreview(preview, task.flowerType);
 
   grid.addEventListener('click', (e) => {
     const option = e.target.closest('.flower-option');
     if (!option) return;
     const id = option.dataset.flower;
-    editDraftFlower = id;
     hidden.value = id;
-    const m = getFlowerMeta(id);
-    preview.innerHTML = `<img src="${m.src}" alt="${m.name}">`;
-    preview.hidden = false;
-    preview.classList.add('visible');
-    grid.classList.add('hidden');
+    showSelectedFlower(id, grid, preview);
+  });
+
+  preview.addEventListener('click', () => {
+    showFlowerGrid(grid, preview, hidden.value);
   });
 };
 
-/* ---------- Pointer drag ---------- */
 
+//Движение//
 const clearCubeHighlights = () => {
   $$('.cube').forEach((c) => c.classList.remove('drop-target', 'drop-forbidden'));
 };
@@ -504,11 +514,9 @@ const startDrag = (e, flowerEl) => {
     fromCube: Boolean(task.cubeId),
     cubeId: task.cubeId,
   };
-
   try {
     flowerEl.setPointerCapture(e.pointerId);
   } catch {
-    /* ignore */
   }
 };
 
@@ -518,8 +526,9 @@ const ensureGhost = (clientX, clientY) => {
   const task = state.tasks.find((t) => t.id === drag.taskId);
   if (!task) return;
   const ghost = document.createElement('div');
-  ghost.className = `flower-ghost state-${calcWiltingState(task)}`;
-  ghost.innerHTML = flowerMarkup(task.flowerType);
+  const lifecycleState = calcWiltingState(task);
+  ghost.className = `flower-ghost flower--${lifecycleState}`;
+  ghost.innerHTML = flowerMarkup(task.flowerType, lifecycleState);
   els.dragLayer.appendChild(ghost);
   drag.ghost = ghost;
   drag.sourceEl.classList.add('is-ghost-source');
@@ -530,23 +539,19 @@ const ensureGhost = (clientX, clientY) => {
 
 const moveDrag = (e) => {
   if (!drag || e.pointerId !== drag.pointerId) return;
-
   const dx = e.clientX - drag.startX;
   const dy = e.clientY - drag.startY;
   if (!drag.moved && Math.hypot(dx, dy) >= DRAG_THRESHOLD) {
     drag.moved = true;
     ensureGhost(e.clientX, e.clientY);
   }
-
   if (!drag.ghost) return;
-
   drag.ghost.style.left = `${e.clientX}px`;
   drag.ghost.style.top = `${e.clientY}px`;
 
   clearCubeHighlights();
   const cube = findCubeAt(e.clientX, e.clientY);
   if (!cube) return;
-
   const cubeId = Number(cube.dataset.cubeId);
   const free =
     isCubeFree(state, cubeId) ||
@@ -558,22 +563,17 @@ const moveDrag = (e) => {
 
 const endDrag = (e) => {
   if (!drag || e.pointerId !== drag.pointerId) return;
-
   const { taskId, sourceEl, ghost, moved, fromCube, startX, startY } = drag;
   const x = e.clientX;
   const y = e.clientY;
-
   clearCubeHighlights();
   els.body.classList.remove('is-dragging');
   ghost?.remove();
   sourceEl.classList.remove('is-ghost-source');
-
   try {
     sourceEl.releasePointerCapture(e.pointerId);
   } catch {
-    /* ignore */
   }
-
   drag = null;
 
   if (!moved) {
@@ -581,31 +581,24 @@ const endDrag = (e) => {
     if (task) showTooltip(task, sourceEl);
     return;
   }
-
   const cube = findCubeAt(x, y);
-
   if (cube) {
     const cubeId = Number(cube.dataset.cubeId);
     const next = placeTaskInCube(state, taskId, cubeId);
     if (next === state && !isCubeFree(state, cubeId)) {
       showToast('Этот куб уже занят');
-    } else if (next !== state) {
-      state = next;
+    } else {
+      commitState(next);
     }
     renderAll();
     return;
   }
 
   if (fromCube && Math.hypot(x - startX, y - startY) > 40) {
-    const harvestGhost = document.createElement('div');
-    harvestGhost.className = 'flower-ghost';
-    const metaType = getTaskById(state, taskId)?.flowerType;
-    harvestGhost.innerHTML = flowerMarkup(metaType);
-    harvestGhost.style.left = `${x}px`;
-    harvestGhost.style.top = `${y}px`;
-    els.dragLayer.appendChild(harvestGhost);
-    animateHarvest(harvestGhost, taskId, () => harvestGhost.remove());
-    renderAll();
+    const harvestTask = state.tasks.find((task) => task.id === taskId);
+    if (!harvestTask) return;
+    const harvestFlower = moveFlowerToHarvestLayer(sourceEl, x, y);
+    animateHarvest(harvestFlower, taskId);
     return;
   }
 
@@ -622,8 +615,8 @@ const cancelDrag = () => {
   renderAll();
 };
 
-/* ---------- Events ---------- */
 
+//Обработчики событий//
 const bindEvents = () => {
   $$('.filter-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -675,15 +668,11 @@ const bindEvents = () => {
     if (!option) return;
     const flowerId = option.dataset.flower;
     state = setSelectedFlower(state, flowerId);
-    showSelectedFlower(flowerId);
+    showSelectedFlower(flowerId, els.flowerGrid, els.selectedPreview);
   });
 
   els.selectedPreview.addEventListener('click', () => {
-    state = setSelectedFlower(state, null);
-    els.flowerGrid.classList.remove('hidden');
-    els.selectedPreview.classList.remove('visible');
-    els.selectedPreview.hidden = true;
-    els.selectedPreview.innerHTML = '';
+    showFlowerGrid(els.flowerGrid, els.selectedPreview, state.selectedFlower);
   });
 
   els.addForm.addEventListener('submit', (e) => {
@@ -693,27 +682,29 @@ const bindEvents = () => {
     const title = titleEl.value.trim();
     const deadline = deadlineEl.value;
     const description = $('#taskDesc').value;
+    const deadlineMs = new Date(deadline).getTime();
+    const validDeadline = Boolean(deadline) && Number.isFinite(deadlineMs);
 
     titleEl.classList.toggle('invalid', !title);
-    deadlineEl.classList.toggle('invalid', !deadline);
+    deadlineEl.classList.toggle('invalid', !validDeadline);
 
     if (!state.selectedFlower) {
       showToast('Выберите сорт цветка');
       return;
     }
-    if (!title || !deadline) {
-      showToast('Заполните название и дедлайн');
+    if (!title || !validDeadline) {
+      showToast('Заполните название и корректный дедлайн');
       return;
     }
 
     const cubesFull = areAllCubesOccupied(state);
 
-    state = addTask(state, {
+    commitState(addTask(state, {
       title,
       description,
-      deadline: new Date(deadline).toISOString(),
+      deadline: new Date(deadlineMs).toISOString(),
       flowerType: state.selectedFlower,
-    });
+    }));
 
     closeModal(els.addOverlay);
     resetAddForm();
@@ -726,6 +717,7 @@ const bindEvents = () => {
 
   els.tasksList.addEventListener('click', (e) => {
     if (e.target.dataset.action === 'cancel-edit') {
+      els.tasksList.classList.remove('editing');
       renderManagementList();
       return;
     }
@@ -736,7 +728,7 @@ const bindEvents = () => {
     const action = e.target.dataset.action;
 
     if (action === 'delete') {
-      state = deleteTask(state, id);
+      commitState(deleteTask(state, id));
       hideTooltip();
       renderManagementList();
       renderAll();
@@ -752,13 +744,20 @@ const bindEvents = () => {
     e.preventDefault();
     const id = form.dataset.id;
     const fd = new FormData(form);
-    state = updateTask(state, id, {
+    const deadlineValue = fd.get('deadline');
+    const deadlineMs = new Date(deadlineValue).getTime();
+    if (!deadlineValue || !Number.isFinite(deadlineMs)) {
+      showToast('Укажите корректный дедлайн');
+      return;
+    }
+
+    commitState(updateTask(state, id, {
       flowerType: fd.get('flowerType'),
       title: fd.get('title'),
       description: fd.get('description'),
-      deadline: new Date(fd.get('deadline')).toISOString(),
-    });
-    editDraftFlower = null;
+      deadline: new Date(deadlineMs).toISOString(),
+    }));
+    els.tasksList.classList.remove('editing');
     renderManagementList();
     renderAll();
   });
@@ -813,7 +812,6 @@ const bindEvents = () => {
     scheduleTipHide();
   });
 
-  // Prevent drag starting from tooltip buttons
   els.tooltip.addEventListener('pointerdown', (e) => {
     e.stopPropagation();
   });
@@ -825,9 +823,9 @@ const bindEvents = () => {
     const id = tooltipTaskId;
     const flowerEl = document.querySelector(`.flower-item[data-task-id="${id}"]`);
     hideTooltip();
-    if (flowerEl) animateHarvest(flowerEl, id, () => {});
+    if (flowerEl) animateHarvest(flowerEl, id);
     else {
-      state = completeTask(state, id);
+      commitState(completeTask(state, id));
       renderAll();
     }
   });
@@ -851,23 +849,35 @@ const bindEvents = () => {
   });
 };
 
-const startLifecycleTicker = () => {
-  clearInterval(tickTimer);
-  tickTimer = setInterval(() => {
-    if (drag?.moved) return;
-    $$('.flower-item').forEach((el) => {
-      const task = state.tasks.find((t) => t.id === el.dataset.taskId);
-      if (!task) return;
-      const wilt = calcWiltingState(task);
-      el.classList.remove('state-fresh', 'state-wilting', 'state-dead');
-      el.classList.add(`state-${wilt}`);
-    });
-    updateTooltipTimer();
-  }, 1000);
+const syncLifecycleVisuals = () => {
+  if (drag?.moved) return;
+  const now = Date.now();
+
+  $$('.flower-item').forEach((el) => {
+    const task = state.tasks.find((t) => t.id === el.dataset.taskId);
+    if (!task) return;
+    const lifecycleState = calcWiltingState(task, now);
+    const lifecycleClass = `flower--${lifecycleState}`;
+    const needsImageSwap = !el.classList.contains(lifecycleClass);
+    el.classList.remove('flower--fresh', 'flower--fading', 'flower--wilted');
+    el.classList.add(lifecycleClass);
+    
+    if (needsImageSwap) el.innerHTML = flowerMarkup(task.flowerType, lifecycleState);
+    const container = el.closest('.cube, .nursery-item');
+    if (container) {
+      const isVisible = matchesFilter(task, state.filter, now);
+      container.classList.toggle('filtered-out', !isVisible);
+    }
+  });
+  updateTooltipTimer();
 };
 
-const init = async () => {
-  await preloadFlowerSvgs();
+const startLifecycleTicker = () => {
+  clearInterval(tickTimer);
+  tickTimer = setInterval(syncLifecycleVisuals, 1000);
+};
+
+const init = () => {
   renderFlowerGrid();
   bindEvents();
   renderAll();
